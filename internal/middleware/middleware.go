@@ -29,10 +29,10 @@ func OnlyAuthMiddleware(next http.Handler) (http.Handler) {
 		}
 
 		// Get Account
-		var account *models.Account
+		var account models.Account
 		session, _ := app.Store.Get(r, "session")
 		apk := session.Values["APK"]
-		app.DB.SQL.Get(account, "SELECT * FROM accounts WHERE ID = ?", apk.(string))
+		app.DB.SQL.Get(&account, "SELECT * FROM accounts WHERE ID = ?", apk.(int64))
 		
 		// Store account under r.Context()
 		ctx := context.WithValue(r.Context(), AccountKey{}, account)
