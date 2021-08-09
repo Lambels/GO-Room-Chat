@@ -20,12 +20,13 @@ func InitHandlers() http.Handler {
 
 	mux.HandleFunc("/", handlers.Index)
 
+	authProtected.HandleFunc("/logout", handlers.Logout).Methods(http.MethodGet)
 	// TODO: Implement rooms and handlers
 	authProtected.HandleFunc("/rooms/new", nil).Methods(http.MethodGet, http.MethodPost)
 	authProtected.HandleFunc("/rooms/delete/{pk}", nil).Methods(http.MethodGet, http.MethodDelete)
 
 	unAuthProtected.HandleFunc("/signup", handlers.Signup).Methods(http.MethodGet, http.MethodPost)
-	
+	unAuthProtected.HandleFunc("/login", handlers.Login).Methods(http.MethodGet, http.MethodPost)
 
 	return mux
 }
