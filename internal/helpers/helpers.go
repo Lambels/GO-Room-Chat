@@ -48,26 +48,25 @@ func IsAuth(r *http.Request) (bool) {
 // User isnt logged in,
 // Passwords match
 func Login(email string, pass []byte, w http.ResponseWriter, r *http.Request) (error) {
-	var account *models.Account
-	err := app.DB.SQL.Get(account, "SELECT * FROM accounts WHERE Email = ?", email)
-	if err != nil {
-		return err
-	}
-
-	// User not found?
-	if !account.Exists() {
-		return ErrUserNotFound
-	}
-
-	err = bcrypt.CompareHashAndPassword([]byte(account.Password), pass)
-	// Wrong password?
-	if err == bcrypt.ErrMismatchedHashAndPassword {
-		return err
-	}
-
+	var account models.Account
+	
 	// Already logged in?
 	if IsAuth(r) {
 		return ErrAlreadyLoggedIn
+	}
+
+	switch err := app.DB.SQL.Get(account, "SELECT * FROM accounts WHERE Email = ?", email); err {
+	case nil:
+
+	case sql.ErrNoRows:
+		return ErrUserNotFound
+
+	default:
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(account.Password), pass); err != nil {
+		return err
 	}
 
 	session, err := app.Store.New(r, "session")
@@ -116,7 +115,9 @@ func Signup(w http.ResponseWriter, r *http.Request, email, usn string, pass []by
 	switch err := app.DB.SQL.Get(&account, "SELECT * FROM accounts WHERE email = ?", email); err {
 	case nil:
 		return ErrUserAlreadyExists
+
 	case sql.ErrNoRows:
+
 	default:
 		return err
 	}
@@ -156,8 +157,7 @@ func GetUser(r *http.Request) (models.Account, error) {
 
 	apk := session.Values["APK"]
 
-	err = app.DB.SQL.Get(&acc, "SELECT * FROM accounts WHERE ID = ?", apk)
-	if err != nil {
+	if err := app.DB.SQL.Get(&acc, "SELECT * FROM accounts WHERE ID = ?", apk); err != nil {
 		return acc, err
 	}
 
