@@ -47,15 +47,15 @@ func IsAuth(r *http.Request) (bool) {
 // Account exists,
 // User isnt logged in,
 // Passwords match
-func Login(email string, pass []byte, w http.ResponseWriter, r *http.Request) (error) {
+func Login(w http.ResponseWriter, r *http.Request, email string, pass []byte) (error) {
 	var account models.Account
-	
+
 	// Already logged in?
 	if IsAuth(r) {
 		return ErrAlreadyLoggedIn
 	}
 
-	switch err := app.DB.SQL.Get(account, "SELECT * FROM accounts WHERE Email = ?", email); err {
+	switch err := app.DB.SQL.Get(&account, "SELECT * FROM accounts WHERE Email = ?", email); err {
 	case nil:
 
 	case sql.ErrNoRows:
