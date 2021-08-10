@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"GO-Group-Chat/internal/config"
 	"GO-Group-Chat/internal/helpers"
-	"GO-Group-Chat/internal/models"
 )
 
 var app *config.AppConfig
@@ -28,11 +27,7 @@ func OnlyAuthMiddleware(next http.Handler) (http.Handler) {
 			return
 		}
 
-		// Get Account
-		var account models.Account
-		session, _ := app.Store.Get(r, "session")
-		apk := session.Values["APK"]
-		app.DB.SQL.Get(&account, "SELECT * FROM accounts WHERE ID = ?", apk.(int64))
+		account, _ := helpers.GetUser(r)	// no need to check error as we know that at this point the user is auth
 		
 		// Store account under r.Context()
 		ctx := context.WithValue(r.Context(), AccountKey{}, account)
