@@ -24,7 +24,7 @@ type WsConnection struct {
 	Conn 	*websocket.Conn
 
 	// The account with which the connestion is associatied with
-	Acc  	*Account
+	Acc  	Account
 
 	// The channel from which messages are pumped to the client
 	Send	chan *Message	
