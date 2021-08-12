@@ -5,6 +5,7 @@ import (
 	"GO-Group-Chat/internal/helpers"
 	"GO-Group-Chat/internal/middleware"
 	"GO-Group-Chat/internal/models"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -151,4 +152,42 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
+// CreateRoom handles "/rooms/new" anb accepts POST and GET verbs
+//
+// CreateRoom needs to be protected by onlyAuth middleware
+func CreateRoom(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		r.ParseForm()
+
+		roomName := r.FormValue("roomName")
+		user := r.Context().Value(middleware.AccountKey{})
+
+		res, err := app.DB.SQL.Exec("INSERT INTO rooms (name, owner) VALUES (?, ?)", roomName, user.(models.Account).ID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		
+		id, _ := res.LastInsertId()
+
+		message := &models.Message{
+			Type: 		models.TYPE_NEW_ROOM,
+			Sender:		user.(models.Account),
+			Data: 		make(map[interface{}]interface{}),
+		}
+
+		message.Data["authorName"] = user.(models.Account).Username
+		message.Data["authorID"] = user.(models.Account).ID
+		message.Data["roomName"] = roomName
+		message.Data["roomId"] = id
+		
+		broadChan <- message
+
+		http.Redirect(w, r, fmt.Sprintf("/room/%v", id), http.StatusSeeOther)
+		return
+	}
+
+	helpers.RenderTemplate(w, "newRoom.html", nil)
 }
