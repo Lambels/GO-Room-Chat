@@ -12,6 +12,21 @@
 {{if .Username}}
 <h1>Hello {{.Username}}!</h1>
 <h3><a href="/logout">Logout?</a></h3>
+
+<script type="text/javascript">
+    document.addEventListener("DOMContentLoaded", () => {
+        ws = new WebSocket("ws://localhost:8080/index/ws");
+
+        ws.onopen = () => {
+            console.log("Connected to server")
+        }
+
+        ws.onmessage = (m) => {
+            console.log(m)
+        }
+    })
+    
+</script>
 {{else}}
 <h1>You arent logged in!</h1>
 <h3><a href="/signup">Signup?</a>, <a href="/login">Login?</a> </h3>
