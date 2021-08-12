@@ -13,9 +13,3 @@ type Account struct {
 	// account password encrypted with bcrypt package: https://pkg.go.dev/golang.org/x/crypto/bcrypt
 	Password []byte		`json:"-" db:"Password"`
 }
-
-// Exists is a helper function used to check if the account exists
-// when a query is made from the database
-func (a *Account) Exists() bool {
-	return !(a.Email == "")
-}
