@@ -8,6 +8,7 @@ import (
 
 	"GO-Group-Chat/internal/config"
 	"GO-Group-Chat/internal/driver"
+	"GO-Group-Chat/internal/models"
 
 	"github.com/srinathgs/mysqlstore"
 )
@@ -40,5 +41,6 @@ func SetupApp() (*config.AppConfig) {
 		DB: db,
 		Domain: *port,
 		Version: Version,
+		ActiveConnections: make(map[int64]models.CommunicationChannels),
 	}
 }
