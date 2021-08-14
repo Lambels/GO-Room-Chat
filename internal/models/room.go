@@ -5,5 +5,5 @@ type Room struct {
 
 	Name	string	`json:"name" db:"Name"`
 	
-	Owner	Account	`json:"owner" db:"Owner"`
+	OwnerID	int64	`json:"owner" db:"Owner"`
 }
