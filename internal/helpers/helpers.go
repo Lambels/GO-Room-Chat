@@ -18,6 +18,8 @@ var (
 	ErrUserAlreadyExists = errors.New("user already exists")
 	ErrAlreadyLoggedIn = errors.New("user already logged in")
 	ErrNotLoggedIn = errors.New("user not logged in")
+
+	ErrRoomNotFound = errors.New("room not found")
 )
 
 // InitHelpers populates the global app variable making it available to the root of the package
@@ -162,4 +164,21 @@ func GetUser(r *http.Request) (models.Account, error) {
 	}
 
 	return acc, nil
+}
+
+func GetRoom(pk int64) (models.Room, error) {
+	var room models.Room
+
+	err := app.DB.SQL.Get(&room, "SELECT * FROM rooms WHERE ID = ?", pk)
+
+	switch err {
+	case nil:
+		return room, nil
+
+	case sql.ErrNoRows:
+		return room, ErrRoomNotFound
+	
+	default:
+		return room, err
+	}
 }
