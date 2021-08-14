@@ -27,18 +27,18 @@ type WsConnection struct {
 	Acc  	Account
 
 	// The channel from which messages are pumped to the client
-	Send	chan *Message	
+	Send	chan Message	
 }
 
 // Listen registers the conn to the set register channel and starts the write and read pump respectively
-func (conn WsConnection) Listen(register, unregister chan<- WsConnection, broadcast chan<- *Message) {
+func (conn WsConnection) Listen(register, unregister chan<- WsConnection, broadcast chan<- Message) {
 	register <- conn
 	go conn.writePump()
 	go conn.readPump(unregister, broadcast)
 }
 
 // readPump pumps messages from the connection to the broadcast channel.
-func (conn WsConnection) readPump(unregister chan<- WsConnection, broadcast chan<- *Message) {
+func (conn WsConnection) readPump(unregister chan<- WsConnection, broadcast chan<- Message) {
 	defer func() {
 		unregister <- conn
 		conn.Conn.Close()
@@ -49,8 +49,8 @@ func (conn WsConnection) readPump(unregister chan<- WsConnection, broadcast chan
 	conn.Conn.SetPongHandler(func(appData string) (error) { conn.Conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 
 	for {
-		var msg *Message
-		err := conn.Conn.ReadJSON(msg)
+		var msg Message
+		err := conn.Conn.ReadJSON(&msg)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("readPump: unexpected error: %v", err)
@@ -97,21 +97,34 @@ func (conn WsConnection) writePump() {
 
 type connMap map[string]WsConnection
 
+type CommunicationChannels struct {
+	Register	chan<- WsConnection
+	Unregister 	chan<- WsConnection
+	Broadcast	chan<- Message
+}
+
 // Creates a new ConnMap and starts listening on
 // the returned channels
 //
 // The returned channels are register, unregister, broadcast
-func NewConnStore() (chan<- WsConnection, chan<- WsConnection, chan<- *Message) {
+func NewConnStore() (CommunicationChannels) {
 	connMap := connMap{}
+
 	register := make(chan WsConnection, 1)
 	unregister := make(chan WsConnection, 1)
-	broadcast := make(chan *Message, 1)
+	broadcast := make(chan Message, 1)
+
 	go connMap.listen(register, unregister, broadcast)
-	return register, unregister, broadcast
+	
+	return CommunicationChannels{
+		Register: register,
+		Unregister: unregister,
+		Broadcast: broadcast,
+	}
 }
 
 // Broadcasts the message to the connections and handles any error by closing the connection
-func (c connMap) broadcast(msg *Message) {
+func (c connMap) broadcast(msg Message) {
 	for e, conn := range c {
 		if e == msg.Sender.Email {
 			continue
@@ -129,7 +142,7 @@ func (c connMap) broadcast(msg *Message) {
 // Listens for events:
 //
 // Register, unregister, broadcast
-func (c connMap) listen(register, unregister <-chan WsConnection, broadcast <-chan *Message) {
+func (c connMap) listen(register, unregister <-chan WsConnection, broadcast <-chan Message) {
 	for {
 		select {
 		case conn := <-register:
