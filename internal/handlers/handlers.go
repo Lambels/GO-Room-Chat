@@ -7,7 +7,9 @@ import (
 	"GO-Group-Chat/internal/models"
 	"fmt"
 	"net/http"
+	"strconv"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -20,13 +22,11 @@ var (
 		ReadBufferSize: 1024,
 	}
 
-	regChan 	chan<- models.WsConnection
-	unRegChan 	chan<- models.WsConnection
-	broadChan 	chan<- *models.Message
+	indexChannels	models.CommunicationChannels
 )
 
 func init() {
-	regChan, unRegChan, broadChan = models.NewConnStore()
+	indexChannels = models.NewConnStore()
 }
 
 func InitHandlers(a *config.AppConfig) {
@@ -74,10 +74,10 @@ func IndexWS(w http.ResponseWriter, r *http.Request) {
 	conn := models.WsConnection {
 		Conn: 	ws,
 		Acc: 	user.(models.Account),
-		Send: 	make(chan *models.Message),
+		Send: 	make(chan models.Message),
 	}
 
-	go conn.Listen(regChan, unRegChan, broadChan)
+	go conn.Listen(indexChannels.Register, indexChannels.Unregister, indexChannels.Broadcast)
 }
 
 // Signup handles "/signup" and accepts POST and GET verbs
@@ -172,10 +172,10 @@ func CreateRoom(w http.ResponseWriter, r *http.Request) {
 		
 		id, _ := res.LastInsertId()
 
-		message := &models.Message{
+		message := models.Message{
 			Type: 		models.TYPE_NEW_ROOM,
 			Sender:		user.(models.Account),
-			Data: 		make(map[interface{}]interface{}),
+			Data: 		make(map[string]interface{}),
 		}
 
 		message.Data["authorName"] = user.(models.Account).Username
@@ -183,11 +183,87 @@ func CreateRoom(w http.ResponseWriter, r *http.Request) {
 		message.Data["roomName"] = roomName
 		message.Data["roomId"] = id
 		
-		broadChan <- message
+		indexChannels.Broadcast <- message
 
 		http.Redirect(w, r, fmt.Sprintf("/room/%v", id), http.StatusSeeOther)
 		return
 	}
 
 	helpers.RenderTemplate(w, "newRoom.html", nil)
+}
+
+func JoinRoom(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	roomID := params["pk"]
+
+	user := r.Context().Value(middleware.AccountKey{}).(models.Account)
+
+	id, _ := strconv.Atoi(roomID) // Irelevant error as roomId goes through regexp
+	room, err := helpers.GetRoom(int64(id))
+	switch err {
+	case nil:
+		ctx := struct {
+			Room 	models.Room
+			User	models.Account
+		} {
+			Room: room,
+			User: user,
+		}
+		helpers.RenderTemplate(w, "room.html", ctx)
+		return
+	
+	case helpers.ErrRoomNotFound:
+		w.WriteHeader(http.StatusNotFound)
+		http.Redirect(w, r, "/room-err/not-found", http.StatusSeeOther)
+		return
+
+	default:
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	
+}
+
+func JoinRoomWS(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	roomID := params["pk"]
+
+	id, _ := strconv.Atoi(roomID) // Irelevant error as roomId goes through regexp
+
+	room, _ := helpers.GetRoom(int64(id))
+
+	roomChannels, ok := app.ActiveConnections[room.ID]
+	// First Connection?
+	if !ok {
+		roomChannels = models.NewConnStore()
+		app.ActiveConnections[room.ID] = roomChannels
+	}
+
+	acc := r.Context().Value(middleware.AccountKey{}).(models.Account)
+
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
+	ws := models.WsConnection {
+		Conn: conn,
+		Acc: acc,
+		Send: make(chan models.Message),
+	}
+
+	go ws.Listen(roomChannels.Register, roomChannels.Unregister, roomChannels.Broadcast)
+
+	msg := models.Message {
+		Type: models.TYPE_NEW_CONNECTION,
+		Sender: acc,
+		Data: make(map[string]interface{}),
+	}
+
+	msg.Data["authorName"] = acc.Username
+	msg.Data["auhtorID"] = acc.ID
+	
+	roomChannels.Broadcast <- msg
 }
