@@ -2,6 +2,8 @@ package models
 
 const (
 	TYPE_NEW_ROOM = iota
+	TYPE_NEW_CONNECTION
+	TYPE_MESSAGE
 )
 
 type Message struct {
@@ -16,5 +18,5 @@ type Message struct {
 
 	// The data is map and its processed by the reciever in different ways
 	// depending on what type the message is
-	Data		map[interface{}]interface{}		`json:"data"`
+	Data		map[string]interface{}			`json:"data"`
 }
