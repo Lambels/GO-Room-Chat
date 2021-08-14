@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ROOM</title>
+</head>
+<body>
+<h1>You are in room {{.Room.Name}}</h1>
+<input type="text" placeholder="message" id="message">
+<button onclick="sendMessage()">Send</button>
+
+<script type="text/javascript">
+    var ws = null;
+
+    document.addEventListener("DOMContentLoaded", () => {
+        ws = new WebSocket("ws://localhost:8080/rooms/{{.Room.ID}}/ws")
+
+        ws.onopen = () => {
+            console.log("connected to room")
+        }
+
+        ws.onmessage = (e) => {
+            console.log(e)
+        }
+    })
+
+    function sendMessage() {
+        message = document.getElementById("message").value;
+        ws.send(JSON.stringify({
+            type:       2,
+            sender:     { id: "{{.User.ID}}", email: "{{.User.Email}}", username: "{{.User.Username}}" },
+            data:       { data: message }
+        }))
+    }
+</script>
+</body>
+</html>
