@@ -185,7 +185,7 @@ func CreateRoom(w http.ResponseWriter, r *http.Request) {
 		
 		indexChannels.Broadcast <- message
 
-		http.Redirect(w, r, fmt.Sprintf("/room/%v", id), http.StatusSeeOther)
+		http.Redirect(w, r, fmt.Sprintf("/rooms/%v", id), http.StatusSeeOther)
 		return
 	}
 
