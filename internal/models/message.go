@@ -14,7 +14,7 @@ type Message struct {
 	Type 		int								`json:"type"`
 
 	// Sender is the account which send the message
-	Sender		Account							`json:"account"`
+	Sender		Account							`json:"sender"`
 
 	// The data is map and its processed by the reciever in different ways
 	// depending on what type the message is
