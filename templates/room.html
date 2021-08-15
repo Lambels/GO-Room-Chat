@@ -4,25 +4,69 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEAg3QhqLMpG8r+8fhAXLRk2vvoC2f3B09zVXn8CA5QIVfZOJ3BCsw2P0p/We" crossorigin="anonymous">
     <title>ROOM</title>
+
+    <style>
+        .chatbox {
+            outline: 1px solid silver;
+            min-height: 160px;
+            padding: 0.5em;
+        }
+    </style>
 </head>
 <body>
-<h1>You are in room {{.Room.Name}}</h1>
-<input type="text" placeholder="message" id="message">
-<button onclick="sendMessage()">Send</button>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="/">&nbsp; GO Room Chat</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+        <li class="nav-item active">
+            <a class="nav-link" href="/">Home/Room {{.Room.Name}} <span class="sr-only">(current)</span></a>
+        </li>
+        </ul>
+    </div>
+</nav>
+<br>
+<div id="output" class="chatbox">
+
+</div>
+<br>
+<div class="form-group">
+    <label for="message">Message:</label>
+    <input type="text" name="message" id="message" class="form-control" autocomplete="off" style="width: 20rem;">
+</div>
+<br>
+<a href="javascript:void(0);" class="btn btn-outline-secondary" onclick="sendMessage()">Send Message</a>
 
 <script type="text/javascript">
     var ws = null;
 
     document.addEventListener("DOMContentLoaded", () => {
-        ws = new WebSocket("ws://localhost:8080/rooms/{{.Room.ID}}/ws")
+        ws = new WebSocket("ws://localhost:8080/rooms/{{.Room.ID}}/ws");
+        o = document.getElementById("output");
 
         ws.onopen = () => {
             console.log("connected to room")
         }
 
-        ws.onmessage = (e) => {
-            console.log(e)
+        ws.onmessage = (m) => {
+            data = JSON.parse(m.data)
+            switch (data.type) {
+                case 1:
+                    o.innerHTML += `
+                        <p>${data.data.authorName} joined the room</p>
+                    `
+                    break
+                case 2:
+                    o.innerHTML += `
+                        <p>${data.sender.username}: ${data.data.data}</p>
+                    `
+                    break
+            }
         }
     })
 
@@ -30,9 +74,12 @@
         message = document.getElementById("message").value;
         ws.send(JSON.stringify({
             type:       2,
-            sender:     { id: "{{.User.ID}}", email: "{{.User.Email}}", username: "{{.User.Username}}" },
+            sender:     { id: Number("{{.User.ID}}"), email: "{{.User.Email}}", username: "{{.User.Username}}" },
             data:       { data: message }
         }))
+        o.innerHTML += `
+            <p>You: ${message}</p>
+        `
     }
 </script>
 </body>
